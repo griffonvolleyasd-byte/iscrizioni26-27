@@ -202,76 +202,35 @@ delle attività svolte come riportato nella tabella di iscrizione alla squadra r
   // Dopo il deployment Apps Script, sostituisci qui sotto con il tuo URL /exec.
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwyWzjHBJCwgQZ1aWyWZMeF1TFBEeu_UJ3nJUI1C4PkmGMFfthqXOHjKl5WhkZC5dUO/exec';
 
-  function submitToAppsScript(payload, button) {
-    return new Promise((resolve, reject) => {
-      if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('INCOLLA_QUI')) {
-        reject(new Error('Manca l’URL della Web App Google Apps Script.'));
-        return;
-      }
+async function submitToAppsScript(payload, button) {
 
-      const iframeName = 'griffon_submit_' + Date.now();
-      const iframe = document.createElement('iframe');
-      iframe.name = iframeName;
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
-
-      const postForm = document.createElement('form');
-      postForm.method = 'POST';
-      postForm.action = APPS_SCRIPT_URL;
-      postForm.target = iframeName;
-      postForm.style.display = 'none';
-
-      const field = document.createElement('input');
-      field.type = 'hidden';
-      field.name = 'payload';
-      field.value = JSON.stringify(payload);
-      postForm.appendChild(field);
-
-      document.body.appendChild(postForm);
-
-      let finished = false;
-
-      const cleanup = () => {
-        try { postForm.remove(); } catch(e) {}
-        try { iframe.remove(); } catch(e) {}
-      };
-
-      const timer = setTimeout(() => {
-        if (finished) return;
-        finished = true;
-        cleanup();
-        reject(new Error('Tempo di invio scaduto. Riprova.'));
-      }, 120000);
-
-      const onMessage = (event) => {
-        const data = event.data;
-        if (!data || data.source !== 'griffon-registration') return;
-
-        window.removeEventListener('message', onMessage);
-        clearTimeout(timer);
-        if (finished) return;
-        finished = true;
-        cleanup();
-
-        document.getElementById('progress').classList.remove('show');
-
-        if (data.ok) {
-          show('Iscrizione inviata correttamente. Protocollo: ' + data.protocol + '. Controlla la tua email per la ricevuta PDF.', true);
-          button.textContent = 'Iscrizione inviata';
-          window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
-          resolve(data);
-        } else {
-          button.disabled = false;
-          show(data.message || 'Invio non riuscito. Riprova.', false);
-          reject(new Error(data.message || 'Invio non riuscito.'));
-        }
-      };
-
-      window.addEventListener('message', onMessage);
-      document.body.appendChild(postForm);
-      postForm.submit();
-    });
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('INCOLLA_QUI')) {
+    throw new Error('Manca l’URL della Web App Google Apps Script.');
   }
+
+  await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  document.getElementById('progress').classList.remove('show');
+
+  show(
+    'Iscrizione inviata. Controlla la tua email per la ricevuta PDF.',
+    true
+  );
+
+  button.textContent = 'Iscrizione inviata';
+
+  window.scrollTo({
+    top: document.body.scrollHeight,
+    behavior: 'smooth'
+  });
+}
 
   function show(message,ok){const box=document.getElementById('status');box.textContent=message;box.className='status show '+(ok?'ok':'error');}
   function readDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);});}
